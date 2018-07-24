@@ -25,7 +25,7 @@ function slowFetch(namelookup) {
 //Initialize Discord Bot
 var bot = new Discord.Client({token: auth.token, autorun: true});
 
-var wantAttributes = {
+var attributeData = {
 	'uniqueName': [
 		{
 			'want':0,
@@ -172,6 +172,12 @@ var wantAttributes = {
 			'alias':'Fusion Limit'
 		}
 	],
+	'drops': [
+		{
+			'want':0,
+			'alias':'Drop table'
+		}
+	],
 	//Primary
 	'secondsPerShot': [
 		{
@@ -197,52 +203,114 @@ bot.on('ready', function(evt) {
 
 bot.on('message', function (user, userID, channelID, message, evt) {
 	if (bot.id != userID) {
-		var thingRegex = /\[(.*)\]/;
-		var thingsArray = thingRegex.exec(message);
-
-		logger.info('Got message: ' + message);
-		logger.info('Regex returned: ' + thingsArray);
-		
-		var selectedItem = null;
-		if (thingsArray != null) {
-			var selectedItem = slowFetch(thingsArray[1]);
-		} else {
-			logger.info('No item!');
-		}
-		
-		if (selectedItem != null) {
-			logger.info('Found item ' + thingsArray[1]);
-			bot.uploadFile({
-				to: channelID,
-				file: './img/' + selectedItem.imageName
-			});
-			var mess = "";
-			for (var attribute in selectedItem) {
-				switch (attribute) {
-					case 'abilities':
-						mess += 'abilities:\n';
-						var i = 1;
-						var abs = selectedItem[attribute]
-						for (var ab in abs) {
-							mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
-							i += 1;
+		if (message[0] == '!') {
+			var args = message.substring(1).split(' ');
+			switch (args[0]) {
+				case 'track':
+					if (attributeData[args[1]] != undefined) {
+						attributeData[args[1]][0]['want'] = 1;
+						bot.sendMessage({
+							to: channelID,
+							message: 'Now tracking ' + args[1]
+						});
+					} else {
+						bot.sendMessage({
+							to: channelID,
+							message: 'I don\'t know anything about ' + args[1] + '!'
+						});
+					}
+					break;
+				case 'untrack':
+					if (attributeData[args[1]] != undefined) {
+						attributeData[args[1]][0]['want'] = 0;
+						bot.sendMessage({
+							to: channelID,
+							message: 'Stopped tracking ' + args[1]
+						});
+					} else {
+						bot.sendMessage({
+							to: channelID,
+							message: 'I don\'t know anything about ' + args[1] + '!'
+						});
+					}
+					break;
+				default:
+					if (attributeData[args[0]] != undefined) {
+						var selectedItem = slowFetch(args[1]);
+						if (selectedItem != null) {
+							bot.sendMessage({
+								to: channelID,
+								message: '[' + args[1] + '] ' + attributeData[args[0]][0]['alias'] + ': ' + selectedItem[args[0]]
+							});
+						} else {
+							bot.sendMessage({
+								to: channelID,
+								message: 'I don\'t recognize that item'
+							});
 						}
-						break;
-						
-					default:
-						if (attribute != 'uniqueName' && attribute != 'imageName' && attribute != 'drops' && attribute != 'patchlogs') {
-							mess += attribute[0].toUpperCase() + attribute.substring(1) + ': ' + selectedItem[attribute] + '\n';
-							logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
-						}
-				}
+					} else {
+						bot.sendMessage({
+							to: channelID,
+							message: 'I didn\'t understand that'
+						});
+					}
 			}
-			bot.sendMessage({
-				to: channelID,
-				message: mess
-			});
-			
 		} else {
-			logger.info('No item found!');
+			var thingRegex = /\[(.*)\]/;
+			var thingsArray = thingRegex.exec(message);
+
+			logger.info('Got message: ' + message);
+			logger.info('Regex returned: ' + thingsArray);
+			
+			var selectedItem = null;
+			if (thingsArray != null) {
+				var selectedItem = slowFetch(thingsArray[1]);
+			} else {
+				logger.info('No item!');
+			}
+			
+			if (selectedItem != null) {
+				logger.info('Found item ' + thingsArray[1]);
+				bot.uploadFile({
+					to: channelID,
+					file: './node_modules/warframe-items/data/img/' + selectedItem.imageName
+				});
+				var mess = "";
+				for (var attribute in selectedItem) {
+					if (attributeData[attribute] != undefined) {
+						//logger.info(attribute + ': ' + attributeData[attribute][0]['want']);
+						if (attributeData[attribute][0]['want'] == 1) {
+							switch (attribute) {
+								case 'abilities':
+									mess += 'Abilities:\n';
+									var i = 1;
+									var abs = selectedItem[attribute]
+									for (var ab in abs) {
+										mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
+										i += 1;
+									}
+									break;
+									
+								default:
+									//if (attribute != 'uniqueName' && attribute != 'imageName' && attribute != 'drops' && attribute != 'patchlogs') {
+									
+										mess += attributeData[attribute][0]['alias'] + ': ' + selectedItem[attribute] + '\n';
+										logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
+							}
+						} else {
+							logger.info('Unwanted attribute ' + attribute);
+						}
+					} else {
+						logger.info('Incomplete list of attributes (' + attribute + ')');
+					}
+				}
+				bot.sendMessage({
+					to: channelID,
+					message: mess
+				});
+			} else {
+				logger.info('No item found!');
+			}
 		}
 	} else {
 		logger.info('Received own message!');
