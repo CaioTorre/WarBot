@@ -1,6 +1,11 @@
 var Discord = require('discord.io');
 var logger = require('winston');
 var auth = require('./auth.json');
+var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
+var xhr;
+var latestMarketChannelID;
+var awaitingMarketResponse = 0;
+var marketDataHeader;
 
 const Items = require('warframe-items');
 const items = new Items();
@@ -137,6 +142,31 @@ var attributeData = {
 		'want':0,
 		'alias':'Aura polarity'
 	},
+	'conclave':
+	{
+		'want':0,
+		'alias':'Conclave'
+	},
+	'color':
+	{
+		'want':0,
+		'alias':'Color'
+	},
+	'introduced':
+	{
+		'want':0,
+		'alias':'Introduced'
+	},
+	'masteryReq':
+	{
+		'want':1,
+		'alias':'Mastery requirement'
+	},
+	'sprint':
+	{
+		'want':0,
+		'alias':'Sprint'
+	},
 	//Mods
 	'polarity': 
 	{
@@ -219,10 +249,15 @@ var attributeData = {
 		'want':1,
 		'alias':'Vaulted'
 	},
-	'wikiaURL':
+	'wikiaUrl':
 	{
 		'want':0,
 		'alias':'Wikia URL'
+	},
+	'wikiaThumbnail':
+	{
+		'want':0,
+		'alias':'Wikia Thumbnail'
 	}
 	//INCOMPLETE
 	
@@ -234,7 +269,31 @@ bot.on('ready', function(evt) {
 	logger.info(bot.username + '-(' + bot.id + ')');
 });
 
+function processMarketStats(e) {
+	logger.info('readystate = ' + xhr.readyState + ' | status = ' + xhr.status);
+	if (xhr.readyState == 4 && xhr.status == 200 && awaitingMarketResponse == 1) {
+		var itemStats = JSON.parse(xhr.responseText);
+		var latest48Hours = itemStats['payload']['statistics']['48hours'];
+		var latestPriceAVG = latest48Hours[latest48Hours.length - 1]['avg_price'];
+		logger.info('Sending market data to channel ID ' + latestMarketChannelID); 
+		bot.sendMessage({
+			to: latestMarketChannelID,
+			message: marketDataHeader + latestPriceAVG + ' platinum __(warframe.market)__'
+		});
+		awaitingMarketResponse = 0;
+	} else {
+		if (xhr.readyState == 4 && xhr.status == 404 && awaitingMarketResponse == 1) {
+			bot.sendMessage({
+				to: latestMarketChannelID,
+				message: 'I was unable to find that item on __warframe.market__'
+			});
+			awaitingMarketResponse = 0;
+		}
+	}
+}
+
 bot.on('message', function (user, userID, channelID, message, evt) {
+	logger.info('Got message from channel ID ' + channelID);
 	if (bot.id != userID) {
 		if (message[0] == '!') {
 			var args = message.substring(1).split(' ');
@@ -267,7 +326,38 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 						});
 					}
 					break;
-				default:
+				case 'price':
+					var testName = '';
+					for (var cname in args) {
+						if (cname > 0 && cname < args.length - 1) { //Remove Link, Barrel, Set, etc.
+							if (cname > 1) {
+								testName += ' ';
+							}
+							testName += args[cname];
+						}
+					};
+					var selectedItem = slowFetch(testName);
+					if (selectedItem != null) {
+						testName += '_' + args[args.length - 1]; //Add it back 
+						var linkName = testName.replace(/ /g, "_"); //Rebuild the link name
+						logger.info('Resulted in linkname \"' + "https://api.warframe.market/v1/items/" + linkName + "/statistics" + '\"');
+						xhr = new XMLHttpRequest();
+						latestMarketChannelID = channelID;
+						awaitingMarketResponse = 1;
+						marketDataHeader = '[' + testName.replace(/_/g, " ") + '] '
+						xhr.open('GET', "https://api.warframe.market/v1/items/" + linkName + "/statistics", true);
+						xhr.send();
+						xhr.onreadystatechange = processMarketStats;
+						xhr.addEventListener("readystatechange", processMarketStats, false);
+						
+					} else {
+						bot.sendMessage({
+							to: channelID,
+							message: 'I couldn\'t find [' + testName + ' ' + args[args.length - 1] + '] in my database'
+						});
+					};
+					break;
+				default: //------------------------ TRY FOR SPECIFIC ATTRIBUTE ---------------------
 					if (attributeData[args[0]] != undefined) {
 						var testName = '';
 						for (var cname in args) {
@@ -284,7 +374,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 							var mess = '';
 							switch (args[0]) {
 								case 'abilities':
-									mess += '[' + testName + '] Abilities:\n';
+									mess += '[' + testName + '] **Abilities**:\n';
 									var i = 1;
 									var abs = selectedItem['abilities'];
 									for (var ab in abs) {
@@ -294,7 +384,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 									break;
 									
 								case 'components':
-									mess += '[' + testName + '] Components:\n';
+									mess += '[' + testName + '] **Components**:\n';
 									var comps = selectedItem['components'];
 									for (var component in comps) {
 										//logger.info('    Current component: ' + comps[component]['name']);
@@ -310,7 +400,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 									break;
 								
 								case 'damageTypes':
-									mess += '[' + testName + '] Damage Types:\n';
+									mess += '[' + testName + '] **Damage Types**:\n';
 									var damtps = selectedItem['damageTypes'];
 									for (var damage in damtps) {
 										mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
@@ -318,15 +408,22 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 									break;
 								default:
 									logger.info('Fetching attribute ' + args[0]);
-									mess += '[' + testName + '] '+ attributeData[args[0]]['alias'] + ': ' + selectedItem[args[0]] + '\n';
+									mess += '[' + testName + '] **'+ attributeData[args[0]]['alias'] + '**: ' + selectedItem[args[0]] + '\n';
 									//logger.info('Appending ' + args[0] + ' (' + selectedItem[args[0]] + ')');
 							}
 							//logger.info('Sending message \"' + mess + '\"');
-							bot.sendMessage({
-								to: channelID,
-								//message: '[' + args[1] + '] ' + attributeData[args[0]]['alias'] + ': ' + selectedItem[args[0]]
-								message: mess
-							});
+							if (mess.length <= 2000) {
+								bot.sendMessage({
+									to: channelID,
+									//message: '[' + args[1] + '] ' + attributeData[args[0]]['alias'] + ': ' + selectedItem[args[0]]
+									message: mess
+								});
+							} else {
+								bot.sendMessage({
+									to: channelID,
+									message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
+								});
+							}
 						} else {
 							bot.sendMessage({
 								to: channelID,
@@ -371,7 +468,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 							if (attributeData[attribute]['want'] == 1) {
 								switch (attribute) {
 									case 'abilities':
-										mess += 'Abilities:\n';
+										mess += '**Abilities**:\n';
 										var i = 1;
 										var abs = selectedItem[attribute];
 										for (var ab in abs) {
@@ -381,7 +478,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 										break;
 										
 									case 'components':
-										mess += 'Components:\n';
+										mess += '**Components**:\n';
 										var comps = selectedItem[attribute];
 										for (var component in comps) {
 											//logger.info('    Current component: ' + comps[component]['name']);
@@ -396,7 +493,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 										break;
 									
 									case 'damageTypes':
-										mess += 'Damage Types:\n';
+										mess += '**Damage Types**:\n';
 										var damtps = selectedItem['damageTypes'];
 										for (var damage in damtps) {
 											mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
@@ -404,7 +501,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 										break;
 
 									default:
-										mess += attributeData[attribute]['alias'] + ': ' + selectedItem[attribute] + '\n';
+										mess += '**' + attributeData[attribute]['alias'] + '**: ' + selectedItem[attribute] + '\n';
 										logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
 								}
 							} else {
@@ -419,11 +516,18 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					//	message: mess
 					//});
 					logger.info('Sending message regarding ' + selectedItem.name);
-					bot.uploadFile({
-						to: channelID,
-						file: './node_modules/warframe-items/data/img/' + selectedItem.imageName,
-						message: mess
-					});
+					if (mess.length <= 2000) {
+						bot.uploadFile({
+							to: channelID,
+							file: './node_modules/warframe-items/data/img/' + selectedItem.imageName,
+							message: mess
+						});
+					} else {
+						bot.sendMessage({
+							to: channelID,
+							message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
+						});
+					}
 				} else {
 					logger.warn('No such item found!');
 				}
