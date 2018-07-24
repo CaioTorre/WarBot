@@ -132,6 +132,11 @@ var attributeData = {
 		'want':0,
 		'alias':'Gender'
 	},
+	'aura':
+	{
+		'want':0,
+		'alias':'Aura polarity'
+	},
 	//Mods
 	'polarity': 
 	{
@@ -313,7 +318,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 									break;
 								default:
 									logger.info('Fetching attribute ' + args[0]);
-									mess += attributeData[args[0]]['alias'] + ': ' + selectedItem[args[0]] + '\n';
+									mess += '[' + testName + '] '+ attributeData[args[0]]['alias'] + ': ' + selectedItem[args[0]] + '\n';
 									//logger.info('Appending ' + args[0] + ' (' + selectedItem[args[0]] + ')');
 							}
 							//logger.info('Sending message \"' + mess + '\"');
@@ -335,83 +340,95 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 						});
 					}
 			}
-		} else {
-			var thingRegex = /\[(.*)\]/;
-			var thingsArray = thingRegex.exec(message);
-
+		} else { //---------------------------- NO !COMMAND FOUND --------------------------
+			var thingRegex = /\[[^\]]*\]/gi;
+			var thingsArray = message.match(thingRegex);
 			logger.info('Got message: ' + message);
-			logger.info('Regex returned: ' + thingsArray);
-			
+			logger.info('Regex returned: ' + thingsArray + ' (length ' + thingsArray.length + ')');
 			var selectedItem = null;
-			if (thingsArray != null) {
-				var selectedItem = slowFetch(thingsArray[1]);
-			} else {
-				logger.info('No item!');
-			}
 			
-			if (selectedItem != null) {
-				logger.info('Found item ' + thingsArray[1]);
-				bot.uploadFile({
-					to: channelID,
-					file: './node_modules/warframe-items/data/img/' + selectedItem.imageName
-				});
-				var mess = "";
-				for (var attribute in selectedItem) {
-					if (attributeData[attribute] != undefined) {
-						//logger.info(attribute + ': ' + attributeData[attribute][0]['want']);
-						if (attributeData[attribute]['want'] == 1) {
-							switch (attribute) {
-								case 'abilities':
-									mess += 'Abilities:\n';
-									var i = 1;
-									var abs = selectedItem[attribute];
-									for (var ab in abs) {
-										mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
-										i += 1;
-									}
-									break;
-									
-								case 'components':
-									mess += 'Components:\n';
-									var comps = selectedItem[attribute];
-									for (var component in comps) {
-										//logger.info('    Current component: ' + comps[component]['name']);
-										mess += '\t- ' + comps[component]['itemCount'] + ' x ' + comps[component]['name'] + '\n';
-										if (comps[component]['drops'] != undefined && attributeData['drops']['want'] == 1) {
-											for (var dropLoc in comps[component]['drops']) {
-												//logger.info('        Current drop location: ' + comps[component]dropLoc);
-												mess += '\t\t' + comps[component]['drops'][dropLoc]['location'] + ' [' + (100.0 * parseFloat(comps[component]['drops'][dropLoc]['chance'])) + '%]\n';
+			for (var currentThing in thingsArray) {
+			//while ( (regexResult = thingRegex.exec(msg)) ) {
+				//logger.info('After regex, message is ' + msg);
+				selectedItem = null;
+				if (thingsArray != null) {
+					//var currentName = regexResult[0];
+					logger.info('Current name: ' + thingsArray[currentThing]);
+					var extractedThing = thingsArray[currentThing];
+					var parsedName = extractedThing.substring(1, extractedThing.length - 1);
+					logger.info('Parsed name: ' + parsedName);
+					var selectedItem = slowFetch(parsedName);
+				} else {
+					logger.info('No items in message!');
+				}
+				
+				if (selectedItem != null) {
+					logger.info('Found item ' + parsedName);
+					var mess = "";
+					for (var attribute in selectedItem) {
+						if (attributeData[attribute] != undefined) {
+							//logger.info(attribute + ': ' + attributeData[attribute][0]['want']);
+							if (attributeData[attribute]['want'] == 1) {
+								switch (attribute) {
+									case 'abilities':
+										mess += 'Abilities:\n';
+										var i = 1;
+										var abs = selectedItem[attribute];
+										for (var ab in abs) {
+											mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
+											i += 1;
+										}
+										break;
+										
+									case 'components':
+										mess += 'Components:\n';
+										var comps = selectedItem[attribute];
+										for (var component in comps) {
+											//logger.info('    Current component: ' + comps[component]['name']);
+											mess += '\t- ' + comps[component]['itemCount'] + ' x ' + comps[component]['name'] + '\n';
+											if (comps[component]['drops'] != undefined && attributeData['drops']['want'] == 1) {
+												for (var dropLoc in comps[component]['drops']) {
+													//logger.info('        Current drop location: ' + comps[component]dropLoc);
+													mess += '\t\t' + comps[component]['drops'][dropLoc]['location'] + ' [' + (100.0 * parseFloat(comps[component]['drops'][dropLoc]['chance'])) + '%]\n';
+												}
 											}
 										}
-									}
-									break;
-								
-								case 'damageTypes':
-									mess += 'Damage Types:\n';
-									var damtps = selectedItem['damageTypes'];
-									for (var damage in damtps) {
-										mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
-									}
-									break;
+										break;
+									
+									case 'damageTypes':
+										mess += 'Damage Types:\n';
+										var damtps = selectedItem['damageTypes'];
+										for (var damage in damtps) {
+											mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
+										}
+										break;
 
-								default:
-									mess += attributeData[attribute]['alias'] + ': ' + selectedItem[attribute] + '\n';
-									logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
+									default:
+										mess += attributeData[attribute]['alias'] + ': ' + selectedItem[attribute] + '\n';
+										logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
+								}
+							} else {
+								logger.info('Unwanted attribute ' + attribute);
 							}
 						} else {
-							logger.info('Unwanted attribute ' + attribute);
+							logger.warn('Incomplete list of attributes (' + attribute + ')');
 						}
-					} else {
-						logger.info('Incomplete list of attributes (' + attribute + ')');
 					}
+					//bot.sendMessage({
+					//	to: channelID,
+					//	message: mess
+					//});
+					logger.info('Sending message regarding ' + selectedItem.name);
+					bot.uploadFile({
+						to: channelID,
+						file: './node_modules/warframe-items/data/img/' + selectedItem.imageName,
+						message: mess
+					});
+				} else {
+					logger.warn('No such item found!');
 				}
-				bot.sendMessage({
-					to: channelID,
-					message: mess
-				});
-			} else {
-				logger.info('No item found!');
 			}
+			logger.info('Message ended as ' + message);
 		}
 	} else {
 		logger.info('Received own message!');
