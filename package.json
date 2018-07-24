@@ -1,0 +1,12 @@
+{
+  "name": "WarBot",
+  "version": "1.0.0",
+  "description": "Warframe lookup bot",
+  "main": "bot.js",
+  "author": "CaioTorre",
+  "dependencies": {
+    "discord.io": "github:woor/discord.io#gateway_v6",
+    "warframe-items": "^1.28.0",
+    "winston": "^3.0.0"
+  }
+}
