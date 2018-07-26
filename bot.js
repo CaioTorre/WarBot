@@ -10,6 +10,10 @@ var marketDataHeader;
 const Items = require('warframe-items');
 const items = new Items();
 
+var fs = require('fs');
+
+//const primePartNames = ['set','blueprint','chassis','neuroptics','systems','cerebrum','barrel','stock','string','barrel','upper limb'];
+
 //Config log settings
 logger.remove(logger.transports.Console);
 logger.add(new logger.transports.Console, {colorize: true});
@@ -30,244 +34,45 @@ function slowFetch(namelookup) {
 //Initialize Discord Bot
 var bot = new Discord.Client({token: auth.token, autorun: true});
 
-var attributeData = {
-	'uniqueName': 
-	{
-		'want':0,
-		'alias':'Unique Name'
-	},
-	'name': 
-	{
-		'want':1,
-		'alias':'Name'
-	},
-	'description': 
-	{
-		'want':1,
-		'alias':'Description'
-	},
-	//Warframes
-	'health': 
-	{
-		'want':1,
-		'alias':'Health'
-	},
-	'shield': 
-	{
-		'want':1,
-		'alias':'Shield'
-	},
-	'armor': 
-	{
-		'want':1,
-		'alias':'Armor'
-	},
-	'stamina': 
-	{
-		'want':0,
-		'alias':'Stamina'
-	},
-	'power': 
-	{
-		'want':1,
-		'alias':'Energy'
-	},
-	'abilities': 
-	{
-		'want':1,
-		'alias':'Abilities'
-	},
-	'type': 
-	{
-		'want':0,
-		'alias':'Type'
-	},
-	'buildPrice': 
-	{
-		'want':0,
-		'alias':'Build Price'
-	},
-	'buildTime': 
-	{
-		'want':0,
-		'alias':'Build Time'
-	},
-	'skipBuildTimePrice': 
-	{
-		'want':0,
-		'alias':'Skip Build Time Price'
-	},
-	'buildQuantity': 
-	{
-		'want':0,
-		'alias':'Build Quantity'
-	},
-	'consumeOnBuild': 
-	{
-		'want':0,
-		'alias':'Consume Blueprint on Build'
-	},
-	'components': 
-	{
-		'want':1,
-		'alias':'Components'
-	},
-	'imageName': 
-	{
-		'want':0,
-		'alias':'Image Name'
-	},
-	'category': 
-	{
-		'want':0,
-		'alias':'Category'
-	},
-	'tradable': 
-	{
-		'want':1,
-		'alias':'Tradable'
-	},
-	'patchlogs': 
-	{
-		'want':0,
-		'alias':'Patchlogs'
-	},
-	'sex':
-	{
-		'want':0,
-		'alias':'Gender'
-	},
-	'aura':
-	{
-		'want':0,
-		'alias':'Aura polarity'
-	},
-	'conclave':
-	{
-		'want':0,
-		'alias':'Conclave'
-	},
-	'color':
-	{
-		'want':0,
-		'alias':'Color'
-	},
-	'introduced':
-	{
-		'want':0,
-		'alias':'Introduced'
-	},
-	'masteryReq':
-	{
-		'want':1,
-		'alias':'Mastery requirement'
-	},
-	'sprint':
-	{
-		'want':0,
-		'alias':'Sprint'
-	},
-	//Mods
-	'polarity': 
-	{
-		'want':1,
-		'alias':'Polarity'
-	},
-	'rarity': 
-	{
-		'want':0,
-		'alias':'Rarity'
-	},
-	'baseDrain': 
-	{
-		'want':0,
-		'alias':'Base Drain'
-	},
-	'fusionLimit': 
-	{
-		'want':0,
-		'alias':'Fusion Limit'
-	},
-	'drops': 
-	{
-		'want':0,
-		'alias':'Drop table'
-	},
-	//Primary
-	'secondsPerShot': 
-	{
-		'want':0,
-		'alias':'Seconds per shot'
-	},
-	'damagePerShot': 
-	{
-		'want':0,
-		'alias':'Damage per shot'
-	},
-	'channeling':
-	{
-		'want':0,
-		'alias':'Channeling'
-	},
-	'damage':
-	{
-		'want':0,
-		'alias':'Total Damage'
-	},
-	'damageTypes':
-	{
-		'want':1,
-		'alias':'Damage Types'
-	},
-	'disposition':
-	{
-		'want':0,
-		'alias':'Disposition'
-	},
-	'marketCost':
-	{
-		'want':0,
-		'alias':'Market Cost'
-	},
-	'polarities':
-	{
-		'want':1,
-		'alias':'Polarities'
-	},
-	'stancePolarity':
-	{
-		'want':1,
-		'alias':'Stance Polarity'
-	},
-	'tags':
-	{
-		'want':0,
-		'alias':'Tags'
-	},
-	'vaulted':
-	{
-		'want':1,
-		'alias':'Vaulted'
-	},
-	'wikiaUrl':
-	{
-		'want':0,
-		'alias':'Wikia URL'
-	},
-	'wikiaThumbnail':
-	{
-		'want':0,
-		'alias':'Wikia Thumbnail'
-	}
-	//INCOMPLETE
-	
-};
+var attributeData = require('./attribData.json');
 
 bot.on('ready', function(evt) {
 	logger.info('Connected');
 	logger.info('Logged in as: ');
 	logger.info(bot.username + '-(' + bot.id + ')');
 });
+
+function find(thing, list) {
+	for (var th in list) {
+		if (list[th] == thing) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function parseDamageTypes(originalMessage) {
+	//-------------- ELEM DAMAGE TYPES ------------------------
+	var parsingMessage = originalMessage.replace('<DT_POISON>',	':skull_crossbones:');
+	parsingMessage = parsingMessage.replace('<DT_FIRE>',		':fire:');
+	parsingMessage = parsingMessage.replace('<DT_FREEZE>',		':snowflake:');
+	parsingMessage = parsingMessage.replace('<DT_ELECTRICITY>',	':zap:');
+	
+	//-------------- COMP DAMAGE TYPES ------------------------
+	parsingMessage = parsingMessage.replace('<DT_CORROSIVE>',	':syringe:');
+	parsingMessage = parsingMessage.replace('<DT_GAS>',			':dash:');
+	parsingMessage = parsingMessage.replace('<DT_RADIATION>',	':radioactive:');
+	parsingMessage = parsingMessage.replace('<DT_VIRAL>',		':space_invader:');
+	parsingMessage = parsingMessage.replace('<DT_MAGNETIC>',	':paperclips:');
+	parsingMessage = parsingMessage.replace('<DT_EXPLOSION>',	':bomb:');
+	
+	//-------------- PHYS DAMAGE TYPES ------------------------
+	parsingMessage = parsingMessage.replace('<DT_SLASH>',		':knife:');
+	parsingMessage = parsingMessage.replace('<DT_IMPACT>',		':hammer:');
+	parsingMessage = parsingMessage.replace('<DT_PUNCTURE>',	':bow_and_arrow:');
+	
+	return parsingMessage;
+}
 
 function processMarketStats(e) {
 	logger.info('readystate = ' + xhr.readyState + ' | status = ' + xhr.status);
@@ -294,11 +99,71 @@ function processMarketStats(e) {
 
 bot.on('message', function (user, userID, channelID, message, evt) {
 	logger.info('Got message from channel ID ' + channelID);
+	message = message.replace(/ +/g, ' ');
 	if (bot.id != userID) {
 		if (message[0] == '!') {
 			var args = message.substring(1).split(' ');
 			switch (args[0]) {
+				case 'help':
+				case 'h':
+					if (args.length == 1) {
+						bot.sendMessage({
+							to: channelID,
+							message: 'Welcome to LotusBot, Tenno! Try these help commands, or ask a moderator for help:\n```\n!help track\n!help untrack\n!help attributes\n!help price```'
+						});
+					} else {
+						switch (args[1]) {
+							case 'track':
+								bot.sendMessage({
+									to: channelID,
+									message: '`!track <attribute>` adds _<attribute>_ to the list of "interesting" traits, so I will be sure to insert that information the next time you request data about an [item].\nSee also `!list attributes` for a list of attributes that I recognize.'
+								});
+								break;
+							case 'untrack':
+								bot.sendMessage({
+									to: channelID,
+									message: '`!untrack <attribute>` removes _<attribute>_ from the list of "interesting" traits, so I won\'t insert that information the next time you request data about an [item].\nSee also `!list attributes` for a list of attributes that I recognize.'
+								});
+								break;
+							case 'attributes':
+								bot.sendMessage({
+									to: channelID,
+									message: '`!<attribute> <item>` retrieves a specific <attribute> from <item>, if that item has that attribute. Useful if you just need that one bit of information, Tenno!'
+								});
+								break;
+							case 'price':
+								bot.sendMessage({
+									to: channelID,
+									message: '`!price <prime item part>` uses _warframe.market_ data from the past day to inform you a mean value of that <prime item part>.'
+								});
+								break;
+						}
+					}
+					break;
+				case 'list':
+				case 'l':
+					if (args.length == 2) {
+						switch (args[1]) {
+							case 'attributes':
+								var mess = '**Attribute list**';
+								for (var att in attributeData) {
+									mess += '\n\t- ' + att + ' (' + attributeData[att]['alias'] + ')';
+								}
+								bot.sendMessage({
+									to: channelID,
+									message: mess
+								});
+								break;
+						}
+					} else {
+						bot.sendMessage({
+							to: channelID,
+							message: 'You need to tell me what I should list, Tenno.'
+						});
+					}
+					break;
 				case 'track':
+				case 't':
 					if (attributeData[args[1]] != undefined) {
 						attributeData[args[1]]['want'] = 1;
 						bot.sendMessage({
@@ -313,6 +178,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					}
 					break;
 				case 'untrack':
+				case 'u':
 					if (attributeData[args[1]] != undefined) {
 						attributeData[args[1]]['want'] = 0;
 						bot.sendMessage({
@@ -327,19 +193,20 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					}
 					break;
 				case 'price':
+				case 'p':
 					var testName = '';
 					for (var cname in args) {
-						if (cname > 0 && cname < args.length - 1) { //Remove Link, Barrel, Set, etc.
+						if (cname > 0 && cname < args.length) {
 							if (cname > 1) {
-								testName += ' ';
+								testName += '_';
 							}
 							testName += args[cname];
 						}
 					};
-					var selectedItem = slowFetch(testName);
-					if (selectedItem != null) {
-						testName += '_' + args[args.length - 1]; //Add it back 
-						var linkName = testName.replace(/ /g, "_"); //Rebuild the link name
+					//var selectedItem = slowFetch(testName);
+					//if (selectedItem != null) {
+						//testName += '_' + args[args.length - 1]; //Add it back 
+						var linkName = testName;//.replace(/ /g, "_"); //Rebuild the link name
 						logger.info('Resulted in linkname \"' + "https://api.warframe.market/v1/items/" + linkName + "/statistics" + '\"');
 						xhr = new XMLHttpRequest();
 						latestMarketChannelID = channelID;
@@ -350,12 +217,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 						xhr.onreadystatechange = processMarketStats;
 						xhr.addEventListener("readystatechange", processMarketStats, false);
 						
-					} else {
-						bot.sendMessage({
-							to: channelID,
-							message: 'I couldn\'t find [' + testName + ' ' + args[args.length - 1] + '] in my database'
-						});
-					};
+					//} else {
+					//	bot.sendMessage({
+					//		to: channelID,
+					//		message: 'I couldn\'t find [' + testName + ' ' + args[args.length - 1] + '] in my database'
+					//	});
+					//};
 					break;
 				default: //------------------------ TRY FOR SPECIFIC ATTRIBUTE ---------------------
 					if (attributeData[args[0]] != undefined) {
@@ -416,7 +283,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 								bot.sendMessage({
 									to: channelID,
 									//message: '[' + args[1] + '] ' + attributeData[args[0]]['alias'] + ': ' + selectedItem[args[0]]
-									message: mess
+									message: parseDamageTypes(mess)
 								});
 							} else {
 								bot.sendMessage({
@@ -441,98 +308,132 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 			var thingRegex = /\[[^\]]*\]/gi;
 			var thingsArray = message.match(thingRegex);
 			logger.info('Got message: ' + message);
-			logger.info('Regex returned: ' + thingsArray + ' (length ' + thingsArray.length + ')');
-			var selectedItem = null;
-			
-			for (var currentThing in thingsArray) {
-			//while ( (regexResult = thingRegex.exec(msg)) ) {
-				//logger.info('After regex, message is ' + msg);
-				selectedItem = null;
-				if (thingsArray != null) {
-					//var currentName = regexResult[0];
-					logger.info('Current name: ' + thingsArray[currentThing]);
-					var extractedThing = thingsArray[currentThing];
-					var parsedName = extractedThing.substring(1, extractedThing.length - 1);
-					logger.info('Parsed name: ' + parsedName);
-					var selectedItem = slowFetch(parsedName);
-				} else {
-					logger.info('No items in message!');
-				}
+			if (thingsArray == null) {
+				logger.info('No pattern found in message');
+			} else {
+				logger.info('Regex returned: ' + thingsArray + ' (length ' + thingsArray.length + ')');
+				var selectedItem = null;
 				
-				if (selectedItem != null) {
-					logger.info('Found item ' + parsedName);
-					var mess = "";
-					for (var attribute in selectedItem) {
-						if (attributeData[attribute] != undefined) {
-							//logger.info(attribute + ': ' + attributeData[attribute][0]['want']);
-							if (attributeData[attribute]['want'] == 1) {
-								switch (attribute) {
-									case 'abilities':
-										mess += '**Abilities**:\n';
-										var i = 1;
-										var abs = selectedItem[attribute];
-										for (var ab in abs) {
-											mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
-											i += 1;
-										}
-										break;
-										
-									case 'components':
-										mess += '**Components**:\n';
-										var comps = selectedItem[attribute];
-										for (var component in comps) {
-											//logger.info('    Current component: ' + comps[component]['name']);
-											mess += '\t- ' + comps[component]['itemCount'] + ' x ' + comps[component]['name'] + '\n';
-											if (comps[component]['drops'] != undefined && attributeData['drops']['want'] == 1) {
-												for (var dropLoc in comps[component]['drops']) {
-													//logger.info('        Current drop location: ' + comps[component]dropLoc);
-													mess += '\t\t' + comps[component]['drops'][dropLoc]['location'] + ' [' + (100.0 * parseFloat(comps[component]['drops'][dropLoc]['chance'])) + '%]\n';
+				for (var currentThing in thingsArray) {
+				//while ( (regexResult = thingRegex.exec(msg)) ) {
+					//logger.info('After regex, message is ' + msg);
+					selectedItem = null;
+					if (thingsArray != null) {
+						//var currentName = regexResult[0];
+						logger.info('Current name: ' + thingsArray[currentThing]);
+						var extractedThing = thingsArray[currentThing];
+						var parsedName = extractedThing.substring(1, extractedThing.length - 1);
+						logger.info('Parsed name: ' + parsedName);
+						var selectedItem = slowFetch(parsedName);
+					} else {
+						logger.info('No items in message!');
+					}
+					
+					if (selectedItem != null) {
+						logger.info('Found item ' + parsedName);
+						var mess = "";
+						for (var attribute in selectedItem) {
+							if (attributeData[attribute] != undefined) {
+								//logger.info(attribute + ': ' + attributeData[attribute][0]['want']);
+								if (attributeData[attribute]['want'] == 1) {
+									switch (attribute) {
+										case 'abilities':
+											mess += '**Abilities**:\n';
+											var i = 1;
+											var abs = selectedItem[attribute];
+											for (var ab in abs) {
+												mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
+												i += 1;
+											}
+											break;
+											
+										case 'components':
+											mess += '**Components**:\n';
+											var comps = selectedItem[attribute];
+											for (var component in comps) {
+												//logger.info('    Current component: ' + comps[component]['name']);
+												mess += '\t- ' + comps[component]['itemCount'] + ' x ' + comps[component]['name'] + '\n';
+												if (comps[component]['drops'] != undefined && attributeData['drops']['want'] == 1) {
+													for (var dropLoc in comps[component]['drops']) {
+														//logger.info('        Current drop location: ' + comps[component]dropLoc);
+														mess += '\t\t' + comps[component]['drops'][dropLoc]['location'] + ' [' + (100.0 * parseFloat(comps[component]['drops'][dropLoc]['chance'])) + '%]\n';
+													}
 												}
 											}
-										}
-										break;
-									
-									case 'damageTypes':
-										mess += '**Damage Types**:\n';
-										var damtps = selectedItem['damageTypes'];
-										for (var damage in damtps) {
-											mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
-										}
-										break;
+											break;
+										
+										case 'damageTypes':
+											mess += '**Damage Types**:\n';
+											var damtps = selectedItem['damageTypes'];
+											for (var damage in damtps) {
+												mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
+											}
+											break;
 
-									default:
-										mess += '**' + attributeData[attribute]['alias'] + '**: ' + selectedItem[attribute] + '\n';
-										logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
+										case 'drops':
+											mess += '**Drop Table**:\n';
+											var drps = selectedItem['drops'];
+											for (var dropItem in drps) {
+												var currentDrop = drps[dropItem];
+												var whiteList = ['Mission Rewards','Transient Rewards','Enemy Mod Tables'];
+												if (find(currentDrop['type'], whiteList)) {
+													if (currentDrop['location'] != null) {
+														mess += '\t- ' + currentDrop['location'];
+													}
+													if (currentDrop['rotation'] != null) {
+														mess += ' [Rotation ' + currentDrop['rotation'] + ']';
+													}
+													if (currentDrop['chance'] != null) {
+														mess += ': ' + (100.0 * parseFloat(currentDrop['chance'])) + '%\n' 
+													}
+												} else {
+													logger.info('Found non-whitelisted drop type (' + currentDrop['type'] + ')');
+												}
+											}
+											break;
+											
+										default:
+											mess += '**' + attributeData[attribute]['alias'] + '**: ' + selectedItem[attribute] + '\n';
+											logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
+									}
+								} else {
+									logger.info('Unwanted attribute ' + attribute);
 								}
 							} else {
-								logger.info('Unwanted attribute ' + attribute);
+								logger.warn('Incomplete list of attributes (' + attribute + ')');
+							}
+						}
+						//bot.sendMessage({
+						//	to: channelID,
+						//	message: mess
+						//});
+						logger.info('Sending message regarding ' + selectedItem.name);
+						if (mess.length <= 2000) {
+							if (fs.existsSync('./node_modules/warframe-items/data/img/' + selectedItem.imageName)) {
+								bot.uploadFile({
+									to: channelID,
+									file: './node_modules/warframe-items/data/img/' + selectedItem.imageName,
+									message: parseDamageTypes(mess)
+								});
+							} else {
+								logger.warn('Image not found @./node_modules/warframe-items/data/img/' + selectedItem.imageName);
+								bot.sendMessage({
+									to: channelID,
+									message: parseDamageTypes(mess)
+								});
 							}
 						} else {
-							logger.warn('Incomplete list of attributes (' + attribute + ')');
+							bot.sendMessage({
+								to: channelID,
+								message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
+							});
 						}
-					}
-					//bot.sendMessage({
-					//	to: channelID,
-					//	message: mess
-					//});
-					logger.info('Sending message regarding ' + selectedItem.name);
-					if (mess.length <= 2000) {
-						bot.uploadFile({
-							to: channelID,
-							file: './node_modules/warframe-items/data/img/' + selectedItem.imageName,
-							message: mess
-						});
 					} else {
-						bot.sendMessage({
-							to: channelID,
-							message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
-						});
+						logger.warn('No such item found!');
 					}
-				} else {
-					logger.warn('No such item found!');
 				}
+				logger.info('Message ended as ' + message);
 			}
-			logger.info('Message ended as ' + message);
 		}
 	} else {
 		logger.info('Received own message!');
