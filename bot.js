@@ -5,10 +5,13 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 var xhr;
 var latestMarketChannelID;
 var awaitingMarketResponse = 0;
+var awaitingWorldStateResponse = 0;
 var marketDataHeader;
 
 const Items = require('warframe-items');
 const items = new Items();
+
+const warframeWorldStateURL = 'http://content.warframe.com/dynamic/worldState.php';
 
 var fs = require('fs');
 
@@ -75,26 +78,7 @@ function parseDamageTypes(originalMessage) {
 }
 
 function processMarketStats(e) {
-	logger.info('readystate = ' + xhr.readyState + ' | status = ' + xhr.status);
-	if (xhr.readyState == 4 && xhr.status == 200 && awaitingMarketResponse == 1) {
-		var itemStats = JSON.parse(xhr.responseText);
-		var latest48Hours = itemStats['payload']['statistics']['48hours'];
-		var latestPriceAVG = latest48Hours[latest48Hours.length - 1]['avg_price'];
-		logger.info('Sending market data to channel ID ' + latestMarketChannelID); 
-		bot.sendMessage({
-			to: latestMarketChannelID,
-			message: marketDataHeader + latestPriceAVG + ' platinum __(warframe.market)__'
-		});
-		awaitingMarketResponse = 0;
-	} else {
-		if (xhr.readyState == 4 && xhr.status == 404 && awaitingMarketResponse == 1) {
-			bot.sendMessage({
-				to: latestMarketChannelID,
-				message: 'I was unable to find that item on __warframe.market__'
-			});
-			awaitingMarketResponse = 0;
-		}
-	}
+	
 }
 
 bot.on('message', function (user, userID, channelID, message, evt) {
@@ -208,14 +192,35 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 						//testName += '_' + args[args.length - 1]; //Add it back 
 						var linkName = testName;//.replace(/ /g, "_"); //Rebuild the link name
 						logger.info('Resulted in linkname \"' + "https://api.warframe.market/v1/items/" + linkName + "/statistics" + '\"');
-						xhr = new XMLHttpRequest();
-						latestMarketChannelID = channelID;
-						awaitingMarketResponse = 1;
-						marketDataHeader = '[' + testName.replace(/_/g, " ") + '] '
-						xhr.open('GET', "https://api.warframe.market/v1/items/" + linkName + "/statistics", true);
-						xhr.send();
-						xhr.onreadystatechange = processMarketStats;
-						xhr.addEventListener("readystatechange", processMarketStats, false);
+						var marketXHR = new XMLHttpRequest();
+						//latestMarketChannelID = channelID;
+						var awaitingMarketResponse = 1;
+						var marketDataHeader = '[' + testName.replace(/_/g, " ") + '] '
+						marketXHR.open('GET', "https://api.warframe.market/v1/items/" + linkName + "/statistics", true);
+						marketXHR.send();
+						//xhr.onreadystatechange = processMarketStats;
+						marketXHR.addEventListener("readystatechange", function(e) {
+							logger.info('readystate = ' + marketXHR.readyState + ' | status = ' + marketXHR.status);
+							if (marketXHR.readyState == 4 && marketXHR.status == 200 && awaitingMarketResponse == 1) {
+								var itemStats = JSON.parse(marketXHR.responseText);
+								var latest48Hours = itemStats['payload']['statistics']['48hours'];
+								var latestPriceAVG = latest48Hours[latest48Hours.length - 1]['avg_price'];
+								//logger.info('Sending market data to channel ID ' + latestMarketChannelID); 
+								bot.sendMessage({
+									to: channelID,
+									message: marketDataHeader + latestPriceAVG + ' platinum __(warframe.market)__'
+								});
+								awaitingMarketResponse = 0;
+							} else {
+								if (marketXHR.readyState == 4 && marketXHR.status == 404 && awaitingMarketResponse == 1) {
+									bot.sendMessage({
+										to: channelID,
+										message: 'I was unable to find that item on __warframe.market__'
+									});
+									awaitingMarketResponse = 0;
+								}
+							}
+						}, false);
 						
 					//} else {
 					//	bot.sendMessage({
@@ -224,6 +229,134 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					//	});
 					//};
 					break;
+				
+				case 'cetus': //Find whether it's day or night in the Plains of Eidolon
+					logger.info('Requested cetus timedata');
+					xhr = new XMLHttpRequest();
+					awaitingWorldStateResponse = 1;
+					xhr.open('GET', warframeWorldStateURL, true);
+					xhr.send();
+					//xhr.onreadystatechange = processCetusTime;
+					xhr.addEventListener("readystatechange", function(e) {
+						logger.info('readystate = ' + xhr.readyState + ' | status = ' + xhr.status);
+						if (xhr.readyState == 4 && xhr.status == 200 && awaitingWorldStateResponse == 1) { //Received successfully
+							logger.info('Retrieved remote worldState data');
+							var worldStateData = JSON.parse(xhr.responseText);
+							var syndicate = worldStateData['SyndicateMissions'].find(element => (element['Tag'] == 'CetusSyndicate'));
+							var timestamp = Math.floor(syndicate['Expiry']['$date']['$numberLong'] / 1000);
+							logger.info('Successfully retrieved Cetus timestamp = ' + timestamp);
+							
+							//Calculate wibbly wobbly timey wimey stuff
+							var time = new Date().getTime() / 1000;
+							var start_time = timestamp - 150 * 60; //One day in cetus is 150 IRL minutes
+							var irl_time_m = ((time - start_time) / 60) % 150;
+							var poe_time_ih = (irl_time_m / 6.25) + 6;
+							if (poe_time_ih < 0) poe_time_ih += 24;
+							if (poe_time_ih > 24) poe_time_ih -= 24;
+							var poe_time_h = Math.floor(poe_time_ih);
+							var poe_time_m = Math.floor((poe_time_ih * 60) % 60);
+							var poe_time_s = Math.floor((poe_time_ih * 60 * 60) % 60);
+							
+							var next_interval;
+							if (100 > irl_time_m) {
+								next_interval = 21;
+							} else {
+								next_interval = 5;
+							}
+							
+							var poe_until_h = next_interval - (poe_time_h % 24);
+							if (poe_until_h < 0) poe_until_h += 24;
+							var poe_until_m = 60 - poe_time_m;
+							var poe_until_s = 60 - poe_time_s;
+							
+							var irl_until_in_h = ((poe_until_h + poe_until_m / 60 + poe_until_s / 3600) * 6.25) / 60;
+							var irl_until_in_m = 150 - irl_time_m;
+							if (irl_until_in_m > 50) irl_until_in_m -= 50;
+							
+							var irl_until_h = Math.floor(irl_until_in_m / 60);
+							var irl_until_m = Math.floor(irl_until_in_m % 60);
+							var irl_until_s = Math.floor((irl_until_in_m * 60) % 60);
+							
+							var time_string = '';
+							if (irl_until_h < 10) time_string += '0';
+							time_string += irl_until_h + ':';
+							if (irl_until_m < 10) time_string += '0';
+							time_string += irl_until_m + ':';
+							if (irl_until_s < 10) time_string += '0';
+							time_string += irl_until_s
+							
+							if (next_interval == 21) {
+								bot.sendMessage({
+									to: channelID,
+									message: 'Time until :crescent_moon: night in Cetus: ' + time_string
+								});
+							} else {
+								bot.sendMessage({
+									to: channelID,
+									message: 'Time until :sunny: day in Cetus: ' + time_string
+								});
+							}
+							
+							awaitingWorldStateResponse = 0;
+						} else {
+							if (xhr.readyState == 4 && awaitingWorldStateResponse == 1) {
+								logger.info('Request failed with code ' + xhr.status);
+								awaitingWorldStateResponse = 0;
+							}
+						}
+					}, false);
+					break;
+					
+				case 'baro':
+					logger.info('Requested baro ki\'teer time data');
+					var baroXHR = new XMLHttpRequest();
+					baroXHR.open('GET', warframeWorldStateURL, true);
+					baroXHR.send();
+					awaitingWorldStateResponse = 1;
+					baroXHR.addEventListener("readystatechange", function(e) {
+						logger.info('readystate = ' + baroXHR.readyState + ' | status = ' + baroXHR.status);
+						if (baroXHR.readyState == 4 && baroXHR.status == 200 && awaitingWorldStateResponse == 1) { //Received successfully
+							var worldStateData = JSON.parse(baroXHR.responseText);
+							var baroData = worldStateData['VoidTraders'].find(element => (element['Character'] == 'Baro\'Ki Teel'));
+							var baroArrivalEpoch = baroData['Activation']['$date']['$numberLong'] / 1000;
+							if (baroArrivalEpoch != undefined) {
+								var currentDate = new Date();
+								var baroArrivalDate = new Date(0);
+								baroArrivalDate.setUTCSeconds(baroArrivalEpoch);
+								logger.info('Current date: ' + currentDate);
+								logger.info('Baro    date: ' + baroArrivalDate);
+								var diff_in_seconds = Math.floor(Math.abs(baroArrivalDate.getTime() - currentDate.getTime()) / 1000);
+								logger.info('Difference  : ' + diff_in_seconds);
+								var diff_string = ':clock: ';
+								if (diff_in_seconds > 86400) {
+									if (Math.floor(diff_in_seconds / 86400) < 10) diff_string += '0';
+									diff_string += Math.floor(diff_in_seconds / 86400) + ':';
+									diff_in_seconds = diff_in_seconds % 86400;
+								}
+								if (Math.floor(diff_in_seconds / 3600) < 10) diff_string += '0';
+								diff_string += Math.floor(diff_in_seconds / 3600) + ':';
+								diff_in_seconds = diff_in_seconds % 3600;
+								if (Math.floor(diff_in_seconds / 60) < 10) diff_string += '0';
+								diff_string += Math.floor(diff_in_seconds / 60) + ':';
+								if ((diff_in_seconds % 60) < 10) diff_string += '0';
+								diff_string += diff_in_seconds % 60;
+								
+								diff_string += ' until Baro Ki\'Teer arrives in the ' + baroData['Node'].replace('HUB', '') + ' relay, Tenno';
+								
+								bot.sendMessage({
+									to: channelID,
+									message: diff_string
+								});
+							}
+						} else {
+							if (baroXHR.readyState == 4 && awaitingWorldStateResponse == 1) {
+								logger.info('Request failed with code ' + baroXHR.status);
+								awaitingWorldStateResponse = 0;
+							}
+						}
+					}, false);					
+					break;
+					
 				default: //------------------------ TRY FOR SPECIFIC ATTRIBUTE ---------------------
 					if (attributeData[args[0]] != undefined) {
 						var testName = '';
@@ -271,6 +404,28 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 									var damtps = selectedItem['damageTypes'];
 									for (var damage in damtps) {
 										mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
+									}
+									break;
+									
+								case 'drops':
+									mess += '**Drop Table**:\n';
+									var drps = selectedItem['drops'];
+									for (var dropItem in drps) {
+										var currentDrop = drps[dropItem];
+										var whiteList = ['Mission Rewards','Transient Rewards','Enemy Mod Tables', 'Cetus Bounty Rewards'];
+										if (find(currentDrop['type'], whiteList)) {
+											if (currentDrop['location'] != null) {
+												mess += '\t- ' + currentDrop['location'];
+											}
+											if (currentDrop['rotation'] != null) {
+												mess += ' [Rotation ' + currentDrop['rotation'] + ']';
+											}
+											if (currentDrop['chance'] != null) {
+												mess += ': ' + (100.0 * parseFloat(currentDrop['chance'])) + '%\n' 
+											}
+										} else {
+											logger.info('Found non-whitelisted drop type (' + currentDrop['type'] + ')');
+										}
 									}
 									break;
 								default:
