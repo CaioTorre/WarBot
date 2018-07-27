@@ -116,7 +116,7 @@ function parseItemAttribute(item, attribute, single) {
 			
 		default:
 			logger.info('Fetching attribute ' + attribute);
-			mess += '**'+ attributeData[attribute]['alias'] + '**: ' + item[attribute] + '\n';
+			mess += '[' + testName + '] **'+ attributeData[args[0]]['alias'] + '**: ' + selectedItem[args[0]] + '\n';
 	}
 	return mess;
 }
@@ -144,22 +144,8 @@ function parseDamageTypes(originalMessage) {
 	return parsingMessage;
 }
 
-function parseFactions(message){
-	var parsingMessage = message.replace('FC_INFESTATION',	':fire: INFESTATION');
-	parsingMessage = parsingMessage.replace('FC_GRINEER',	':syringe: GRINEER'); 
-	parsingMessage = parsingMessage.replace('FC_CORPUS',	':zap: CORPUS'); 
+function processMarketStats(e) {
 	
-	return parsingMessage;
-}
-
-function voidFissureDict(txt) {
-	switch (txt[5]) {
-		case '1': return 'Lith [T1]'; break;
-		case '2': return 'Meso [T2]'; break;
-		case '3': return 'Neo [T3]'; break;
-		case '4': return 'Axi [T4]'; break;
-		default: logger.error('Got unknown void fissure ID (' + txt + ')');
-	}
 }
 
 bot.on('message', function (user, userID, channelID, message, evt) {
@@ -312,7 +298,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					break;
 				
 				case 'cetus': //Find whether it's day or night in the Plains of Eidolon
-				case 'c':
 					logger.info('Requested cetus timedata');
 					xhr = new XMLHttpRequest();
 					awaitingWorldStateResponse = 1;
@@ -390,7 +375,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					break;
 					
 				case 'baro':
-				case 'b':
 					logger.info('Requested baro ki\'teer time data');
 					var baroXHR = new XMLHttpRequest();
 					baroXHR.open('GET', warframeWorldStateURL, true);
@@ -408,62 +392,28 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 								baroArrivalDate.setUTCSeconds(baroArrivalEpoch);
 								logger.info('Current date: ' + currentDate);
 								logger.info('Baro    date: ' + baroArrivalDate);
-								if (baroArrivalDate > currentDate) {
-									logger.info('Baro will arrive');
-									var diff_in_seconds = Math.floor(Math.abs(baroArrivalDate.getTime() - currentDate.getTime()) / 1000);
-									logger.info('Difference  : ' + diff_in_seconds);
-									var diff_string = ':clock: ';
-									if (diff_in_seconds > 86400) {
-										if (Math.floor(diff_in_seconds / 86400) < 10) diff_string += '0';
-										diff_string += Math.floor(diff_in_seconds / 86400) + ':';
-										diff_in_seconds = diff_in_seconds % 86400;
-									}
-									if (Math.floor(diff_in_seconds / 3600) < 10) diff_string += '0';
-									diff_string += Math.floor(diff_in_seconds / 3600) + ':';
-									diff_in_seconds = diff_in_seconds % 3600;
-									if (Math.floor(diff_in_seconds / 60) < 10) diff_string += '0';
-									diff_string += Math.floor(diff_in_seconds / 60) + ':';
-									if ((diff_in_seconds % 60) < 10) diff_string += '0';
-									diff_string += diff_in_seconds % 60;
-									
-									diff_string += ' until Baro Ki\'Teer arrives in the ' + baroData['Node'].replace('HUB', '') + ' relay, Tenno';
-									
-									bot.sendMessage({
-										to: channelID,
-										message: diff_string
-									});
-								} else {
-									logger.info('Baro will leave');
-									var baroLeavingDate = new Date(0);
-									var baroLeavingEpoch = baroData['Expiry']['$date']['$numberLong'] / 1000;
-									if (baroLeavingEpoch != undefined) {
-										baroLeavingDate.setUTCSeconds(baroLeavingEpoch);
-										logger.info('Leaving date: ' + baroLeavingDate);
-										var diff_in_seconds = Math.floor(Math.abs(baroLeavingDate.getTime() - currentDate.getTime()) / 1000);
-										logger.info('Difference  : ' + diff_in_seconds);
-										var diff_string = ':money_with_wings: Baro Ki\'Teer is currently in the ' + baroData['Node'].replace('HUB', '') + ' relay, and will leave in ';
-										
-										if (diff_in_seconds > 86400) {
-											if (Math.floor(diff_in_seconds / 86400) < 10) diff_string += '0';
-											diff_string += Math.floor(diff_in_seconds / 86400) + ':';
-											diff_in_seconds = diff_in_seconds % 86400;
-										}
-										if (Math.floor(diff_in_seconds / 3600) < 10) diff_string += '0';
-										diff_string += Math.floor(diff_in_seconds / 3600) + ':';
-										diff_in_seconds = diff_in_seconds % 3600;
-										if (Math.floor(diff_in_seconds / 60) < 10) diff_string += '0';
-										diff_string += Math.floor(diff_in_seconds / 60) + ':';
-										if ((diff_in_seconds % 60) < 10) diff_string += '0';
-										diff_string += diff_in_seconds % 60;
-										
-										bot.sendMessage({
-											to: channelID,
-											message: diff_string
-										});
-									} else {
-										logger.error('Baro leaving epoch is undefined');
-									}
+								var diff_in_seconds = Math.floor(Math.abs(baroArrivalDate.getTime() - currentDate.getTime()) / 1000);
+								logger.info('Difference  : ' + diff_in_seconds);
+								var diff_string = ':clock: ';
+								if (diff_in_seconds > 86400) {
+									if (Math.floor(diff_in_seconds / 86400) < 10) diff_string += '0';
+									diff_string += Math.floor(diff_in_seconds / 86400) + ':';
+									diff_in_seconds = diff_in_seconds % 86400;
 								}
+								if (Math.floor(diff_in_seconds / 3600) < 10) diff_string += '0';
+								diff_string += Math.floor(diff_in_seconds / 3600) + ':';
+								diff_in_seconds = diff_in_seconds % 3600;
+								if (Math.floor(diff_in_seconds / 60) < 10) diff_string += '0';
+								diff_string += Math.floor(diff_in_seconds / 60) + ':';
+								if ((diff_in_seconds % 60) < 10) diff_string += '0';
+								diff_string += diff_in_seconds % 60;
+								
+								diff_string += ' until Baro Ki\'Teer arrives in the ' + baroData['Node'].replace('HUB', '') + ' relay, Tenno';
+								
+								bot.sendMessage({
+									to: channelID,
+									message: diff_string
+								});
 							}
 						} else {
 							if (baroXHR.readyState == 4 && awaitingWorldStateResponse == 1) {
@@ -474,134 +424,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					}, false);					
 					break;
 					
-				case 'alerts':
-				case 'alert':
-				case 'a':
-					logger.info('Requested alert data');
-					
-					var alertXHR = new XMLHttpRequest();
-					alertXHR.open('GET', warframeWorldStateURL, true);
-					alertXHR.send();
-					
-					var awaitingAlertResponse = 1;
-					alertXHR.addEventListener('readystatechange', function(e) {
-						if (alertXHR.readyState == 4 && alertXHR.status == 200 && awaitingAlertResponse == 1) {
-							var mess = '**Alerts**\n'
-							var worldStateData = JSON.parse(alertXHR.responseText);
-							var alertData = worldStateData['Alerts'];
-							for (var alertID in alertData) {
-								var thisAlert = alertData[alertID];
-								mess += '\t[**' + thisAlert['MissionInfo']['minEnemyLevel'] + ' - ' + thisAlert['MissionInfo']['maxEnemyLevel'] + '** ' + thisAlert['MissionInfo']['faction'].substring(3).replace('_', ' ') + '] **' + thisAlert['MissionInfo']['missionType'].substring(3).replace('_', ' ') + '**'
-								if (thisAlert['MissionInfo']['archwingRequired']) mess += ' :airplane: Archwing'
-								
-								var currentDate = new Date();
-								var alertExDate = new Date(0);
-								alertExDate.setUTCSeconds(thisAlert['Expiry']['$date']['$numberLong'] / 1000);
-								var diff_in_seconds = Math.abs(alertExDate - currentDate) / 1000;
-								
-								mess += ' - :clock: '
-								if (diff_in_seconds > 60) mess += Math.floor(diff_in_seconds / 60) + 'm';
-								mess += Math.floor(diff_in_seconds % 60) + 's' 
-									
-								
-								mess += '\n\t\t:moneybag: ' + thisAlert['MissionInfo']['missionReward']['credits'] + ' credits\n';
-								var rewardsAlert = thisAlert['MissionInfo']['missionReward']['items'];
-								for (var rewardID in rewardsAlert) {
-									//var rewardData = items.find(element => (rewardsAlert[rewardID]
-									mess += '\t\t ' + rewardsAlert[rewardID] + '\n';
-								}
-								mess += '\n'
-							}
-							bot.sendMessage({
-								to: channelID,
-								message: mess
-							});
-							awaitingAlertResponse = 0;
-						} else {
-							if (alertXHR.readyState == 4 && awaitingAlertResponse == 1) {
-								logger.error('Request failed with error ' + alertXHR.status);
-								awaitingAlertResponse = 0;
-							}
-						}
-					}, false);
-					break;
-					
-				case 'fissures':
-				case 'f':
-					logger.info('Requested void fissures data');
-					
-					var fissuresXHR = new XMLHttpRequest();
-					fissuresXHR.open('GET', warframeWorldStateURL, true);
-					fissuresXHR.send();
-					
-					var awaitingFissuresResponse = 1;
-					fissuresXHR.addEventListener('readystatechange', function(e) {
-						logger.info('readystate = ' + fissuresXHR.readyState + ' | status = ' + fissuresXHR.status);
-						if (fissuresXHR.readyState == 4 && fissuresXHR.status == 200 && awaitingFissuresResponse == 1) {
-							var mess = '**Void Fissures**\n'
-							var worldStateData = JSON.parse(fissuresXHR.responseText);
-							var fissuresData = worldStateData['ActiveMissions'];
-							logger.info('Got ' + fissuresData.length + ' fissures');
-							for (var fissureID in fissuresData) {
-								logger.info('Analizing fissure ' + fissureID)
-								thisFissure = fissuresData[fissureID];
-								
-								var currentDate = new Date();
-								var fissExpDate = new Date(0);
-								fissExpDate.setUTCSeconds(thisFissure['Expiry']['$date']['$numberLong'] / 1000);
-								var diff_in_seconds = Math.abs(fissExpDate - currentDate) / 1000;
-								mess += '\t:clock: `'
-								if (diff_in_seconds > 60) mess += Math.floor(diff_in_seconds / 60) + 'm';
-								mess += Math.floor(diff_in_seconds % 60) + 's`' 
-								
-								mess += '\t' + thisFissure['MissionType'].substring(3).replace('_', ' ') + ' - ' + voidFissureDict(thisFissure['Modifier']) + '\n';
-							}
-							bot.sendMessage({
-								to: channelID,
-								message: mess
-							});
-							awaitingFissuresResponse = 0;
-						} else {
-							if (fissuresXHR.readyState == 4 && awaitingFissuresResponse == 1) {
-								logger.error('Request failed with error ' + fissuresXHR.status);
-								awaitingFissuresResponse = 0;
-							}
-						}
-					}, false);
-					break;
-					
-				case 'sorties':
-				case 's':
-					logger.info('Requested sorties data');
-					
-					var sortiesXHR = new XMLHttpRequest();
-					sortiesXHR.open('GET', warframeWorldStateURL, true);
-					sortiesXHR.send();
-					
-					var awaitingFissuresResponse = 1;
-					sortiesXHR.addEventListener('readystatechange', function(e) {
-						logger.info('readystate = ' + sortiesXHR.readyState + ' | status = ' + sortiesXHR.status);
-						if (sortiesXHR.readyState == 4 && sortiesXHR.status == 200 && awaitingFissuresResponse == 1) {
-							var mess = '**Daily Sorties**\n'
-							var worldStateData = JSON.parse(sortiesXHR.responseText);
-							var sortiesData = worldStateData['Sorties'][0];
-							var sortiesVariants = sortiesData['Variants']
-							mess += '\t1 - ' + sortiesVariants[0]['missionType'].substring(3) + ' [Modifier = ' + sortiesVariants[0]['modifierType'].substring(16).replace('_', ' ') + ']\n'
-							mess += '\t2 - ' + sortiesVariants[1]['missionType'].substring(3) + ' [Modifier = ' + sortiesVariants[1]['modifierType'].substring(16).replace('_', ' ') + ']\n'
-							mess += '\t3 - ' + sortiesVariants[2]['missionType'].substring(3) + ' [Modifier = ' + sortiesVariants[2]['modifierType'].substring(16).replace('_', ' ') + ']\n' 
-							bot.sendMessage({
-								to: channelID,
-								message: mess
-							});
-							awaitingFissuresResponse = 0;
-						} else {
-							if (sortiesXHR.readyState == 4 && awaitingFissuresResponse == 1) {
-								logger.error('Request failed with error ' + sortiesXHR.status);
-								awaitingFissuresResponse = 0;
-							}
-						}
-					}, false);
-					break;
 				default: //------------------------ TRY FOR SPECIFIC ATTRIBUTE ---------------------
 					if (attributeData[args[0]] != undefined) {
 						var testName = '';
@@ -617,21 +439,80 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 						//var selectedItem = slowFetch(testName);
 						var selectedItem = items.find(element => (element['name'].toLowerCase() == testName.toLowerCase()));
 						if (selectedItem != null) {
-							var mess = parseItemAttribute(selectedItem, args[0], true);
-							if (mess != null) {
-								if (mess.length <= 2000) {
-									bot.sendMessage({
-										to: channelID,
-										message: parseDamageTypes(mess)
-									});
-								} else {
-									bot.sendMessage({
-										to: channelID,
-										message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
-									});
-								}
+							var mess = '';
+							switch (args[0]) {
+								case 'abilities':
+									mess += '[' + testName + '] **Abilities**:\n';
+									var i = 1;
+									var abs = selectedItem['abilities'];
+									for (var ab in abs) {
+										mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
+										i += 1;
+									}
+									break;
+									
+								case 'components':
+									mess += '[' + testName + '] **Components**:\n';
+									var comps = selectedItem['components'];
+									for (var component in comps) {
+										//logger.info('    Current component: ' + comps[component]['name']);
+										mess += '\t- ' + comps[component]['itemCount'] + ' x ' + comps[component]['name'] + '\n';
+										if (comps[component]['drops'] != undefined && attributeData['drops']['want'] == 1) {
+											logger.info('Drop data requested...');
+											for (var dropLoc in comps[component]['drops']) {
+												//logger.info('        Current drop location: ' + comps[component]dropLoc);
+												mess += '\t\t' + comps[component]['drops'][dropLoc]['location'] + ' [' + (100.0 * parseFloat(comps[component]['drops'][dropLoc]['chance'])) + '%]\n';
+											}
+										}
+									}
+									break;
+								
+								case 'damageTypes':
+									mess += '[' + testName + '] **Damage Types**:\n';
+									var damtps = selectedItem['damageTypes'];
+									for (var damage in damtps) {
+										mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
+									}
+									break;
+									
+								case 'drops':
+									mess += '**Drop Table**:\n';
+									var drps = selectedItem['drops'];
+									for (var dropItem in drps) {
+										var currentDrop = drps[dropItem];
+										var whiteList = ['Mission Rewards','Transient Rewards','Enemy Mod Tables', 'Cetus Bounty Rewards'];
+										if (find(currentDrop['type'], whiteList)) {
+											if (currentDrop['location'] != null) {
+												mess += '\t- ' + currentDrop['location'];
+											}
+											if (currentDrop['rotation'] != null) {
+												mess += ' [Rotation ' + currentDrop['rotation'] + ']';
+											}
+											if (currentDrop['chance'] != null) {
+												mess += ': ' + (100.0 * parseFloat(currentDrop['chance'])) + '%\n' 
+											}
+										} else {
+											logger.info('Found non-whitelisted drop type (' + currentDrop['type'] + ')');
+										}
+									}
+									break;
+								default:
+									logger.info('Fetching attribute ' + args[0]);
+									mess += '[' + testName + '] **'+ attributeData[args[0]]['alias'] + '**: ' + selectedItem[args[0]] + '\n';
+									//logger.info('Appending ' + args[0] + ' (' + selectedItem[args[0]] + ')');
+							}
+							//logger.info('Sending message \"' + mess + '\"');
+							if (mess.length <= 2000) {
+								bot.sendMessage({
+									to: channelID,
+									//message: '[' + args[1] + '] ' + attributeData[args[0]]['alias'] + ': ' + selectedItem[args[0]]
+									message: parseDamageTypes(mess)
+								});
 							} else {
-								logger.error('parseItemAttribute returned null!');
+								bot.sendMessage({
+									to: channelID,
+									message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
+								});
 							}
 						} else {
 							bot.sendMessage({
@@ -650,7 +531,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 			var thingRegex = /\[[^\]]*\]/gi;
 			var thingsArray = message.match(thingRegex);
 			logger.info('Got message: ' + message);
-			var failedNames = [];
 			if (thingsArray == null) {
 				logger.info('No pattern found in message');
 			} else {
@@ -658,6 +538,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				var selectedItem = null;
 				
 				for (var currentThing in thingsArray) {
+				//while ( (regexResult = thingRegex.exec(msg)) ) {
+					//logger.info('After regex, message is ' + msg);
 					selectedItem = null;
 					if (thingsArray != null) {
 						//var currentName = regexResult[0];
@@ -678,7 +560,66 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 							if (attributeData[attribute] != undefined) {
 								//logger.info(attribute + ': ' + attributeData[attribute][0]['want']);
 								if (attributeData[attribute]['want'] == 1) {
-									mess += parseItemAttribute(selectedItem, attribute, false);
+									switch (attribute) {
+										case 'abilities':
+											mess += '**Abilities**:\n';
+											var i = 1;
+											var abs = selectedItem[attribute];
+											for (var ab in abs) {
+												mess += '\t' + i + '. ' + abs[ab]['name'] + ": " + abs[ab]['description'] + '\n';
+												i += 1;
+											}
+											break;
+											
+										case 'components':
+											mess += '**Components**:\n';
+											var comps = selectedItem[attribute];
+											for (var component in comps) {
+												//logger.info('    Current component: ' + comps[component]['name']);
+												mess += '\t- ' + comps[component]['itemCount'] + ' x ' + comps[component]['name'] + '\n';
+												if (comps[component]['drops'] != undefined && attributeData['drops']['want'] == 1) {
+													for (var dropLoc in comps[component]['drops']) {
+														//logger.info('        Current drop location: ' + comps[component]dropLoc);
+														mess += '\t\t' + comps[component]['drops'][dropLoc]['location'] + ' [' + (100.0 * parseFloat(comps[component]['drops'][dropLoc]['chance'])) + '%]\n';
+													}
+												}
+											}
+											break;
+										
+										case 'damageTypes':
+											mess += '**Damage Types**:\n';
+											var damtps = selectedItem['damageTypes'];
+											for (var damage in damtps) {
+												mess += '\t- ' + damtps[damage] + ' ' + damage + '\n';
+											}
+											break;
+
+										case 'drops':
+											mess += '**Drop Table**:\n';
+											var drps = selectedItem['drops'];
+											for (var dropItem in drps) {
+												var currentDrop = drps[dropItem];
+												var whiteList = ['Mission Rewards','Transient Rewards','Enemy Mod Tables'];
+												if (find(currentDrop['type'], whiteList)) {
+													if (currentDrop['location'] != null) {
+														mess += '\t- ' + currentDrop['location'];
+													}
+													if (currentDrop['rotation'] != null) {
+														mess += ' [Rotation ' + currentDrop['rotation'] + ']';
+													}
+													if (currentDrop['chance'] != null) {
+														mess += ': ' + (100.0 * parseFloat(currentDrop['chance'])) + '%\n' 
+													}
+												} else {
+													logger.info('Found non-whitelisted drop type (' + currentDrop['type'] + ')');
+												}
+											}
+											break;
+											
+										default:
+											mess += '**' + attributeData[attribute]['alias'] + '**: ' + selectedItem[attribute] + '\n';
+											logger.info('Appending ' + attribute + ' (' + selectedItem[attribute] + ')');
+									}
 								} else {
 									logger.info('Unwanted attribute ' + attribute);
 								}
@@ -686,53 +627,36 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 								logger.warn('Incomplete list of attributes (' + attribute + ')');
 							}
 						}
-						if (mess != null) {
-							logger.info('Sending message regarding ' + selectedItem.name);
-							if (mess.length <= 2000) {
-								if (fs.existsSync('./node_modules/warframe-items/data/img/' + selectedItem.imageName)) {
-									bot.uploadFile({
-										to: channelID,
-										file: './node_modules/warframe-items/data/img/' + selectedItem.imageName,
-										message: parseDamageTypes(mess)
-									});
-								} else {
-									logger.warn('Image not found @./node_modules/warframe-items/data/img/' + selectedItem.imageName);
-									bot.sendMessage({
-										to: channelID,
-										message: parseDamageTypes(mess)
-									});
-								}
+						//bot.sendMessage({
+						//	to: channelID,
+						//	message: mess
+						//});
+						logger.info('Sending message regarding ' + selectedItem.name);
+						if (mess.length <= 2000) {
+							if (fs.existsSync('./node_modules/warframe-items/data/img/' + selectedItem.imageName)) {
+								bot.uploadFile({
+									to: channelID,
+									file: './node_modules/warframe-items/data/img/' + selectedItem.imageName,
+									message: parseDamageTypes(mess)
+								});
 							} else {
+								logger.warn('Image not found @./node_modules/warframe-items/data/img/' + selectedItem.imageName);
 								bot.sendMessage({
 									to: channelID,
-									message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
+									message: parseDamageTypes(mess)
 								});
 							}
 						} else {
-							logger.error('parseItemAttribute returned null!')
+							bot.sendMessage({
+								to: channelID,
+								message: 'I\'m sorry, Tenno, but your requested information is too large (' + mess.length + ' characters). Try disabling drop tables (_!untrack drops_).'
+							});
 						}
 					} else {
-						failedNames.push(parsedName);
 						logger.warn('No such item found!');
 					}
 				}
-			}
-			if (failedNames.length > 0) {
-				var origLength = failedNames.length;
-				var mess = 'I couldn\'t find information on ';
-				if (origLength == 1) {
-					mess += failedNames[0];
-				} else {
-					for (var fail in failedNames) {
-						mess += failedNames[fail];
-						if (fail < origLength - 2) mess += ', ';
-						if (fail == origLength - 2) mess += ' or ';
-					}
-				}
-				bot.sendMessage({
-					to: channelID,
-					message: mess
-				});
+				logger.info('Message ended as ' + message);
 			}
 		}
 	} else {
