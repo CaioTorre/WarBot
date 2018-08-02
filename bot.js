@@ -174,7 +174,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					if (args.length == 1) {
 						bot.sendMessage({
 							to: channelID,
-							message: 'Welcome to LotusBot, Tenno! Try these help commands, or ask a moderator for help:\n```\n!help track\n!help untrack\n!help attributes\n!help price```'
+							message: 'Welcome to LotusBot, Tenno! Try these help commands, or ask a moderator for help:\n```\n!help track\n!help untrack\n!help attributes\n!help price\n!help events```\nAll of the commands can be shortened to their first letter, if unambiguous (e.g. `!price` = `!p`)'
 						});
 					} else {
 						switch (args[1]) {
@@ -202,6 +202,17 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 									message: '`!price <prime item part>` uses _warframe.market_ data from the past day to inform you a mean value of that <prime item part>.'
 								});
 								break;
+							case 'events':
+								var message =	'`!alerts` fetches data about the ongoing alerts (time until expiry, mission type, enemy faction and levels, and rewards (_alpha_))\n'
+								message +=		'`!fissures` fetches data about the ongoing void fissures (time until expiry, mission type, and tier)\n'
+								message +=		'`!sorties` fetches data about the daily sorties (time until expiry, mission list and modifiers)\n'
+								message +=		'`!cetus` fetches data about the day/night cycle in Cetus and the Plains of Eidolon, and returns the time until sunset/sunrise\n'
+								message +=		'`!baro` fetches data about Baro Ki\'Teer, the Void Trader (time until arrival/departure, and which relay\n'
+								bot.sendMessage({
+									to: channelID,
+									message: message
+								});
+								break;
 						}
 					}
 					break;
@@ -217,6 +228,16 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 								bot.sendMessage({
 									to: channelID,
 									message: mess
+								});
+							case 'commands':
+								var mess = '**Commands list**\n```';
+								var cmdlist = ['help', 'track', 'untrack', 'price', 'alerts', 'fissures', 'sorties', 'cetus', 'baro'].sort();
+								for (var cmdID in cmdlist) {
+									mess += cmdlist[cmdID] + ' (' + cmdlist[cmdID][0] + ')\n';
+								}
+								bot.sendMessage({
+									to: channelID,
+									message: mess + '```'
 								});
 								break;
 						}
@@ -268,47 +289,39 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 							testName += args[cname];
 						}
 					};
-					//var selectedItem = slowFetch(testName);
-					//if (selectedItem != null) {
-						//testName += '_' + args[args.length - 1]; //Add it back 
-						var linkName = testName;//.replace(/ /g, "_"); //Rebuild the link name
-						logger.info('Resulted in linkname \"' + "https://api.warframe.market/v1/items/" + linkName + "/statistics" + '\"');
-						var marketXHR = new XMLHttpRequest();
-						//latestMarketChannelID = channelID;
-						var awaitingMarketResponse = 1;
-						var marketDataHeader = '[' + testName.replace(/_/g, " ") + '] '
-						marketXHR.open('GET', "https://api.warframe.market/v1/items/" + linkName + "/statistics", true);
-						marketXHR.send();
-						//xhr.onreadystatechange = processMarketStats;
-						marketXHR.addEventListener("readystatechange", function(e) {
-							logger.info('readystate = ' + marketXHR.readyState + ' | status = ' + marketXHR.status);
-							if (marketXHR.readyState == 4 && marketXHR.status == 200 && awaitingMarketResponse == 1) {
-								var itemStats = JSON.parse(marketXHR.responseText);
-								var latest48Hours = itemStats['payload']['statistics']['48hours'];
-								var latestPriceAVG = latest48Hours[latest48Hours.length - 1]['avg_price'];
-								//logger.info('Sending market data to channel ID ' + latestMarketChannelID); 
+					
+					var linkName = testName;//.replace(/ /g, "_"); //Rebuild the link name
+					logger.info('Resulted in linkname \"' + "https://api.warframe.market/v1/items/" + linkName + "/statistics" + '\"');
+					var marketXHR = new XMLHttpRequest();
+					
+					var awaitingMarketResponse = 1;
+					var marketDataHeader = '[' + testName.replace(/_/g, " ") + '] ';
+					
+					marketXHR.open('GET', "https://api.warframe.market/v1/items/" + linkName + "/statistics", true);
+					marketXHR.send();
+					
+					marketXHR.addEventListener("readystatechange", function(e) {
+						logger.info('readystate = ' + marketXHR.readyState + ' | status = ' + marketXHR.status);
+						if (marketXHR.readyState == 4 && marketXHR.status == 200 && awaitingMarketResponse == 1) {
+							var itemStats = JSON.parse(marketXHR.responseText);
+							var latest48Hours = itemStats['payload']['statistics']['48hours'];
+							var latestPriceAVG = latest48Hours[latest48Hours.length - 1]['avg_price'];
+							
+							bot.sendMessage({
+								to: channelID,
+								message: marketDataHeader + latestPriceAVG + ' platinum __(warframe.market)__'
+							});
+							awaitingMarketResponse = 0;
+						} else {
+							if (marketXHR.readyState == 4 && marketXHR.status == 404 && awaitingMarketResponse == 1) {
 								bot.sendMessage({
 									to: channelID,
-									message: marketDataHeader + latestPriceAVG + ' platinum __(warframe.market)__'
+									message: 'I was unable to find that item on __warframe.market__'
 								});
 								awaitingMarketResponse = 0;
-							} else {
-								if (marketXHR.readyState == 4 && marketXHR.status == 404 && awaitingMarketResponse == 1) {
-									bot.sendMessage({
-										to: channelID,
-										message: 'I was unable to find that item on __warframe.market__'
-									});
-									awaitingMarketResponse = 0;
-								}
 							}
-						}, false);
-						
-					//} else {
-					//	bot.sendMessage({
-					//		to: channelID,
-					//		message: 'I couldn\'t find [' + testName + ' ' + args[args.length - 1] + '] in my database'
-					//	});
-					//};
+						}
+					}, false);
 					break;
 				
 				case 'cetus': //Find whether it's day or night in the Plains of Eidolon
@@ -413,11 +426,13 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 									var diff_in_seconds = Math.floor(Math.abs(baroArrivalDate.getTime() - currentDate.getTime()) / 1000);
 									logger.info('Difference  : ' + diff_in_seconds);
 									var diff_string = ':clock: ';
+									
 									if (diff_in_seconds > 86400) {
 										if (Math.floor(diff_in_seconds / 86400) < 10) diff_string += '0';
 										diff_string += Math.floor(diff_in_seconds / 86400) + ':';
 										diff_in_seconds = diff_in_seconds % 86400;
 									}
+									
 									if (Math.floor(diff_in_seconds / 3600) < 10) diff_string += '0';
 									diff_string += Math.floor(diff_in_seconds / 3600) + ':';
 									diff_in_seconds = diff_in_seconds % 3600;
@@ -582,9 +597,20 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					sortiesXHR.addEventListener('readystatechange', function(e) {
 						logger.info('readystate = ' + sortiesXHR.readyState + ' | status = ' + sortiesXHR.status);
 						if (sortiesXHR.readyState == 4 && sortiesXHR.status == 200 && awaitingFissuresResponse == 1) {
-							var mess = '**Daily Sorties**\n'
+							var mess = '**Daily Sorties** - '
 							var worldStateData = JSON.parse(sortiesXHR.responseText);
 							var sortiesData = worldStateData['Sorties'][0];
+							var currentDate = new Date();
+							var sortExpDate = new Date(0);
+							sortExpDate.setUTCSeconds(sortiesData['Expiry']['$date']['$numberLong'] / 1000);
+							var diff_in_seconds = Math.abs(sortExpDate - currentDate) / 1000;
+							
+							logger.info('Seconds til sorties expire = ' + diff_in_seconds);
+							if (diff_in_seconds > 3600) mess += Math.floor(diff_in_seconds / 3600) + 'h';
+							diff_in_seconds = diff_in_seconds % 3600;
+							if (diff_in_seconds > 60) mess += Math.floor(diff_in_seconds / 60) + 'm';
+							mess += Math.floor(diff_in_seconds % 60) + 's\n' 
+								
 							var sortiesVariants = sortiesData['Variants']
 							mess += '\t1 - ' + sortiesVariants[0]['missionType'].substring(3) + ' [Modifier = ' + sortiesVariants[0]['modifierType'].substring(16).replace('_', ' ') + ']\n'
 							mess += '\t2 - ' + sortiesVariants[1]['missionType'].substring(3) + ' [Modifier = ' + sortiesVariants[1]['modifierType'].substring(16).replace('_', ' ') + ']\n'
@@ -724,7 +750,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					mess += failedNames[0];
 				} else {
 					for (var fail in failedNames) {
-						mess += failedNames[fail];
+						mess += '[' + failedNames[fail] + ']';
 						if (fail < origLength - 2) mess += ', ';
 						if (fail == origLength - 2) mess += ' or ';
 					}
