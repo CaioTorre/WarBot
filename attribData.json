@@ -1,0 +1,230 @@
+
+{
+	"uniqueName": 
+	{
+		"want":0,
+		"alias":"Unique Name"
+	},
+	"name": 
+	{
+		"want":1,
+		"alias":"Name"
+	},
+	"description": 
+	{
+		"want":1,
+		"alias":"Description"
+	},
+	"health": 
+	{
+		"want":1,
+		"alias":"Health"
+	},
+	"shield": 
+	{
+		"want":1,
+		"alias":"Shield"
+	},
+	"armor": 
+	{
+		"want":1,
+		"alias":"Armor"
+	},
+	"stamina": 
+	{
+		"want":0,
+		"alias":"Stamina"
+	},
+	"power": 
+	{
+		"want":1,
+		"alias":"Energy"
+	},
+	"abilities": 
+	{
+		"want":1,
+		"alias":"Abilities"
+	},
+	"type": 
+	{
+		"want":0,
+		"alias":"Type"
+	},
+	"buildPrice": 
+	{
+		"want":0,
+		"alias":"Build Price"
+	},
+	"buildTime": 
+	{
+		"want":0,
+		"alias":"Build Time"
+	},
+	"skipBuildTimePrice": 
+	{
+		"want":0,
+		"alias":"Skip Build Time Price"
+	},
+	"buildQuantity": 
+	{
+		"want":0,
+		"alias":"Build Quantity"
+	},
+	"consumeOnBuild": 
+	{
+		"want":0,
+		"alias":"Consume Blueprint on Build"
+	},
+	"components": 
+	{
+		"want":1,
+		"alias":"Components"
+	},
+	"imageName": 
+	{
+		"want":0,
+		"alias":"Image Name"
+	},
+	"category": 
+	{
+		"want":0,
+		"alias":"Category"
+	},
+	"tradable": 
+	{
+		"want":1,
+		"alias":"Tradable"
+	},
+	"patchlogs": 
+	{
+		"want":0,
+		"alias":"Patchlogs"
+	},
+	"sex":
+	{
+		"want":0,
+		"alias":"Gender"
+	},
+	"aura":
+	{
+		"want":0,
+		"alias":"Aura polarity"
+	},
+	"conclave":
+	{
+		"want":0,
+		"alias":"Conclave"
+	},
+	"color":
+	{
+		"want":0,
+		"alias":"Color"
+	},
+	"introduced":
+	{
+		"want":0,
+		"alias":"Introduced"
+	},
+	"masteryReq":
+	{
+		"want":1,
+		"alias":"Mastery requirement"
+	},
+	"sprint":
+	{
+		"want":0,
+		"alias":"Sprint"
+	},
+	"polarity": 
+	{
+		"want":1,
+		"alias":"Polarity"
+	},
+	"rarity": 
+	{
+		"want":0,
+		"alias":"Rarity"
+	},
+	"baseDrain": 
+	{
+		"want":0,
+		"alias":"Base Drain"
+	},
+	"fusionLimit": 
+	{
+		"want":0,
+		"alias":"Fusion Limit"
+	},
+	"drops": 
+	{
+		"want":1,
+		"alias":"Drop table"
+	},
+	"secondsPerShot": 
+	{
+		"want":0,
+		"alias":"Seconds per shot"
+	},
+	"damagePerShot": 
+	{
+		"want":0,
+		"alias":"Damage per shot"
+	},
+	"channeling":
+	{
+		"want":0,
+		"alias":"Channeling"
+	},
+	"damage":
+	{
+		"want":0,
+		"alias":"Total Damage"
+	},
+	"damageTypes":
+	{
+		"want":1,
+		"alias":"Damage Types"
+	},
+	"disposition":
+	{
+		"want":0,
+		"alias":"Disposition"
+	},
+	"marketCost":
+	{
+		"want":0,
+		"alias":"Market Cost"
+	},
+	"polarities":
+	{
+		"want":1,
+		"alias":"Polarities"
+	},
+	"stancePolarity":
+	{
+		"want":1,
+		"alias":"Stance Polarity"
+	},
+	"tags":
+	{
+		"want":0,
+		"alias":"Tags"
+	},
+	"vaulted":
+	{
+		"want":1,
+		"alias":"Vaulted"
+	},
+	"wikiaUrl":
+	{
+		"want":0,
+		"alias":"Wikia URL"
+	},
+	"wikiaThumbnail":
+	{
+		"want":0,
+		"alias":"Wikia Thumbnail"
+	}
+	
+	
+}

@@ -6,7 +6,9 @@
   "author": "CaioTorre",
   "dependencies": {
     "discord.io": "github:woor/discord.io#gateway_v6",
-    "warframe-items": "^1.28.0",
-    "winston": "^3.0.0"
+    "npm": "^6.3.0",
+    "warframe-items": "^1.29.0",
+    "winston": "^3.0.0",
+    "xmlhttprequest": "^1.8.0"
   }
 }
